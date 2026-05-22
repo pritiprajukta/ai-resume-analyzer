@@ -4,24 +4,24 @@ import PyPDF2
 import numpy as np
 import re
 import os
-import matplotlib.pyplot as plt
 import sqlite3
+import matplotlib
+
+# ✅ FIX: Render-safe matplotlib backend
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
 from reportlab.pdfgen import canvas
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# -------------------------
-# SAFE BASE PATH (IMPORTANT FOR RENDER)
-# -------------------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# -------------------------
-# IMPORT CUSTOM MODULES (SAFE)
-# -------------------------
 from database import save_history
 from auth import login_user, register_user
 
+# -------------------------
+# OPTIONAL AI MODULE
+# -------------------------
 try:
     from ai_helper import get_ai_feedback
 except:
@@ -46,11 +46,23 @@ except:
 app = Flask(__name__)
 app.secret_key = "secret123"
 
+# Ensure folders exist
+os.makedirs("static", exist_ok=True)
+os.makedirs("model", exist_ok=True)
+
 # -------------------------
 # MODEL LOAD (SAFE PATH)
 # -------------------------
-model = pickle.load(open(os.path.join(BASE_DIR, "model", "model.pkl"), "rb"))
-vectorizer = pickle.load(open(os.path.join(BASE_DIR, "model", "vectorizer.pkl"), "rb"))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+model_path = os.path.join(BASE_DIR, "model", "model.pkl")
+vectorizer_path = os.path.join(BASE_DIR, "model", "vectorizer.pkl")
+
+with open(model_path, "rb") as f:
+    model = pickle.load(f)
+
+with open(vectorizer_path, "rb") as f:
+    vectorizer = pickle.load(f)
 
 # -------------------------
 # SKILLS
@@ -81,6 +93,36 @@ IMPORTANT_SKILLS = {
 MUST_HAVE_SKILLS = ["python", "sql", "communication"]
 
 # -------------------------
+# DB INIT (IMPORTANT FOR RENDER)
+# -------------------------
+def init_db():
+    conn = sqlite3.connect("users.db")
+    c = conn.cursor()
+
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE,
+        password TEXT
+    )
+    """)
+
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT,
+        prediction TEXT,
+        confidence REAL,
+        skills TEXT
+    )
+    """)
+
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# -------------------------
 # HELPERS
 # -------------------------
 def extract_skills(text):
@@ -97,7 +139,6 @@ def calculate_resume_score(skills):
 
 
 def calculate_ats_score(resume_text, job_description, skills):
-
     if not resume_text or not job_description:
         return 0
 
@@ -107,10 +148,16 @@ def calculate_ats_score(resume_text, job_description, skills):
 
     base_score = similarity * 100
 
-    skill_score = sum(IMPORTANT_SKILLS.get(s.lower(), 2) for s in skills)
+    skill_score = 0
+    for s in skills:
+        skill_score += IMPORTANT_SKILLS.get(s.lower(), 2)
+
     skill_score = min(skill_score, 40)
 
-    penalty = sum(10 for must in MUST_HAVE_SKILLS if must not in skills)
+    penalty = 0
+    for must in MUST_HAVE_SKILLS:
+        if must not in skills:
+            penalty += 10
 
     final_score = base_score + skill_score - penalty
 
@@ -119,7 +166,6 @@ def calculate_ats_score(resume_text, job_description, skills):
 
 def generate_suggestions(skills):
     suggestions = []
-
     if "python" not in skills:
         suggestions.append("Learn Python")
     if "sql" not in skills:
@@ -128,21 +174,17 @@ def generate_suggestions(skills):
         suggestions.append("Build ML projects")
     if "github" not in skills:
         suggestions.append("Upload projects on GitHub")
-
     return suggestions
 
 
 def create_pie_chart(classes, probabilities):
-    os.makedirs("static", exist_ok=True)
-
     plt.figure(figsize=(7, 7))
     plt.pie(probabilities, labels=classes, autopct='%1.1f%%')
     plt.title("Prediction Distribution")
 
-    path = os.path.join("static", "pie_chart.png")
+    path = "static/pie_chart.png"
     plt.savefig(path, bbox_inches="tight")
     plt.close()
-
     return path
 
 
@@ -194,7 +236,6 @@ def logout():
 # -------------------------
 @app.route("/predict", methods=["POST"])
 def predict():
-
     global last_prediction, last_skills
 
     if "user" not in session:
@@ -208,9 +249,12 @@ def predict():
 
     try:
         reader = PyPDF2.PdfReader(file)
-        text = "".join([page.extract_text() or "" for page in reader.pages])
-    except Exception as e:
-        return f"PDF error: {e}"
+        text = ""
+        for page in reader.pages:
+            if page.extract_text():
+                text += page.extract_text()
+    except:
+        return "PDF error"
 
     vec = vectorizer.transform([text])
     prediction = model.predict(vec)[0]
@@ -220,6 +264,7 @@ def predict():
 
     classes = model.classes_
     top_indices = np.argsort(probabilities)[::-1][:3]
+
     top_3 = [(classes[i], round(probabilities[i] * 100, 2)) for i in top_indices]
 
     skills = extract_skills(text)
@@ -227,8 +272,7 @@ def predict():
     resume_score = calculate_resume_score(skills)
     ats_score = calculate_ats_score(text, job_description, skills)
 
-    important = ["python", "sql", "machine learning", "github", "communication"]
-    missing_skills = [s for s in important if s not in skills]
+    missing_skills = [s for s in ["python", "sql", "machine learning", "github", "communication"] if s not in skills]
 
     suggestions = generate_suggestions(skills)
 
@@ -245,8 +289,8 @@ def predict():
 
     try:
         save_history(username, prediction, confidence, skills)
-    except Exception as e:
-        print("DB error:", e)
+    except:
+        pass
 
     last_prediction = {
         "prediction": prediction,
@@ -281,7 +325,7 @@ def download():
     if "user" not in session:
         return redirect("/login")
 
-    file = os.path.join(BASE_DIR, "report.pdf")
+    file = "report.pdf"
     c = canvas.Canvas(file)
 
     c.drawString(100, 800, "AI Resume Report")
@@ -302,7 +346,7 @@ def history():
     if "user" not in session:
         return redirect("/login")
 
-    conn = sqlite3.connect(os.path.join(BASE_DIR, "users.db"))
+    conn = sqlite3.connect("users.db")
     c = conn.cursor()
     c.execute("SELECT * FROM history ORDER BY id DESC")
     data = c.fetchall()
@@ -319,7 +363,7 @@ def admin():
     if "user" not in session:
         return redirect("/login")
 
-    conn = sqlite3.connect(os.path.join(BASE_DIR, "users.db"))
+    conn = sqlite3.connect("users.db")
     c = conn.cursor()
 
     c.execute("SELECT COUNT(*) FROM users")
@@ -342,7 +386,8 @@ def admin():
 
 
 # -------------------------
-# RUN (LOCAL ONLY)
+# RUN (RENDER SAFE)
 # -------------------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)

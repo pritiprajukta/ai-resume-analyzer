@@ -5,9 +5,11 @@ import numpy as np
 import re
 import os
 import sqlite3
-import matplotlib
 
-# ✅ FIX: Render-safe matplotlib backend
+# -------------------------
+# IMPORTANT: FIX FOR RENDER (matplotlib backend)
+# -------------------------
+import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -46,23 +48,13 @@ except:
 app = Flask(__name__)
 app.secret_key = "secret123"
 
-# Ensure folders exist
-os.makedirs("static", exist_ok=True)
-os.makedirs("model", exist_ok=True)
-
 # -------------------------
-# MODEL LOAD (SAFE PATH)
+# SAFE MODEL LOADING (RENDER FIX)
 # -------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-model_path = os.path.join(BASE_DIR, "model", "model.pkl")
-vectorizer_path = os.path.join(BASE_DIR, "model", "vectorizer.pkl")
-
-with open(model_path, "rb") as f:
-    model = pickle.load(f)
-
-with open(vectorizer_path, "rb") as f:
-    vectorizer = pickle.load(f)
+model = pickle.load(open(os.path.join(BASE_DIR, "model", "model.pkl"), "rb"))
+vectorizer = pickle.load(open(os.path.join(BASE_DIR, "model", "vectorizer.pkl"), "rb"))
 
 # -------------------------
 # SKILLS
@@ -91,36 +83,6 @@ IMPORTANT_SKILLS = {
 }
 
 MUST_HAVE_SKILLS = ["python", "sql", "communication"]
-
-# -------------------------
-# DB INIT (IMPORTANT FOR RENDER)
-# -------------------------
-def init_db():
-    conn = sqlite3.connect("users.db")
-    c = conn.cursor()
-
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE,
-        password TEXT
-    )
-    """)
-
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS history (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT,
-        prediction TEXT,
-        confidence REAL,
-        skills TEXT
-    )
-    """)
-
-    conn.commit()
-    conn.close()
-
-init_db()
 
 # -------------------------
 # HELPERS
@@ -166,6 +128,7 @@ def calculate_ats_score(resume_text, job_description, skills):
 
 def generate_suggestions(skills):
     suggestions = []
+
     if "python" not in skills:
         suggestions.append("Learn Python")
     if "sql" not in skills:
@@ -174,22 +137,26 @@ def generate_suggestions(skills):
         suggestions.append("Build ML projects")
     if "github" not in skills:
         suggestions.append("Upload projects on GitHub")
+
     return suggestions
 
 
 def create_pie_chart(classes, probabilities):
+    os.makedirs("static", exist_ok=True)
+
     plt.figure(figsize=(7, 7))
     plt.pie(probabilities, labels=classes, autopct='%1.1f%%')
     plt.title("Prediction Distribution")
 
-    path = "static/pie_chart.png"
+    path = os.path.join("static", "pie_chart.png")
     plt.savefig(path, bbox_inches="tight")
     plt.close()
+
     return path
 
 
 # -------------------------
-# GLOBAL
+# GLOBAL STORAGE
 # -------------------------
 last_prediction = {}
 last_skills = []
@@ -232,7 +199,7 @@ def logout():
 
 
 # -------------------------
-# PREDICT
+# PREDICT ROUTE
 # -------------------------
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -272,7 +239,8 @@ def predict():
     resume_score = calculate_resume_score(skills)
     ats_score = calculate_ats_score(text, job_description, skills)
 
-    missing_skills = [s for s in ["python", "sql", "machine learning", "github", "communication"] if s not in skills]
+    important = ["python", "sql", "machine learning", "github", "communication"]
+    missing_skills = [s for s in important if s not in skills]
 
     suggestions = generate_suggestions(skills)
 
@@ -318,7 +286,7 @@ def predict():
 
 
 # -------------------------
-# DOWNLOAD
+# DOWNLOAD REPORT
 # -------------------------
 @app.route("/download")
 def download():
@@ -386,8 +354,7 @@ def admin():
 
 
 # -------------------------
-# RUN (RENDER SAFE)
+# RUN
 # -------------------------
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=5000)

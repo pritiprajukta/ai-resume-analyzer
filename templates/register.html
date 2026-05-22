@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Register | AI Resume Screening</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            font-family: Arial, sans-serif;
+        }
+
+        .register-card {
+            width: 420px;
+            padding: 40px;
+            border-radius: 25px;
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(15px);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+            color: white;
+        }
+
+        .logo-icon {
+            font-size: 60px;
+            margin-bottom: 10px;
+        }
+
+        .form-control {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 12px;
+        }
+
+        .form-control::placeholder {
+            color: rgba(255,255,255,0.8);
+        }
+
+        .form-control:focus {
+            background: rgba(255,255,255,0.25);
+            color: white;
+            box-shadow: none;
+        }
+
+        .btn-register {
+            background: white;
+            color: #6a11cb;
+            font-weight: bold;
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            transition: 0.3s;
+        }
+
+        .btn-register:hover {
+            transform: scale(1.03);
+            background: #f1f1f1;
+        }
+
+        .bottom-text a {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        h2, p, label, .bi {
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="register-card text-center">
+
+    <i class="bi bi-person-plus-fill logo-icon"></i>
+
+    <h2>Create Account</h2>
+    <p>Join AI Resume Screening Platform</p>
+
+    <form method="POST">
+
+        <div class="mb-3 text-start">
+            <label>Username</label>
+            <input type="text" name="username" class="form-control" placeholder="Choose username" required>
+        </div>
+
+        <div class="mb-4 text-start">
+            <label>Password</label>
+            <input type="password" name="password" class="form-control" placeholder="Create password" required>
+        </div>
+
+        <button class="btn btn-register w-100">
+            <i class="bi bi-person-check-fill"></i>
+            Register
+        </button>
+
+    </form>
+
+    <div class="bottom-text mt-4">
+        Already have an account?
+        <a href="/login">Login</a>
+    </div>
+
+</div>
+
+</body>
+</html>

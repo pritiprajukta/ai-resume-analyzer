@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Resume Screening System</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            min-height: 100vh;
+            background: linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.65)),
+            url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f');
+            background-size: cover;
+            background-position: center;
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 15px;
+        }
+
+        .main-card {
+            width: 100%;
+            max-width: 1000px;
+            background: rgba(255,255,255,0.12);
+            backdrop-filter: blur(15px);
+            border-radius: 25px;
+            padding: 30px;
+            color: white;
+        }
+
+        .upload-box, .result-box {
+            background: rgba(255,255,255,0.10);
+            padding: 25px;
+            border-radius: 18px;
+            margin-top: 25px;
+        }
+
+        .score-value {
+            font-size: 42px;
+            font-weight: bold;
+        }
+
+        .badge {
+            margin: 5px;
+        }
+
+        .suggestion-item {
+            background: rgba(255,255,255,0.15);
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+        }
+
+        .section-title {
+            margin-top: 20px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="main-card">
+
+    <h2 class="text-center">AI Resume Screening System</h2>
+    <p class="text-center">Upload Resume + Job Description for AI Analysis</p>
+
+    <!-- UPLOAD -->
+    <div class="upload-box">
+
+        <form method="POST" action="/predict" enctype="multipart/form-data">
+
+            <input class="form-control" type="file" name="resume_pdf" accept=".pdf" required>
+
+            <textarea class="form-control mt-3" name="job_description" rows="6"
+                placeholder="Paste Job Description Here..." required></textarea>
+
+            <button class="btn btn-success mt-3 w-100">
+                Analyze Resume
+            </button>
+
+        </form>
+
+    </div>
+
+    <!-- RESULTS -->
+    {% if prediction %}
+
+    <div class="result-box mt-4">
+
+        <h4>Prediction</h4>
+        <h2 class="text-success">{{ prediction }}</h2>
+
+        <p>Confidence: {{ confidence }}%</p>
+
+        <div class="progress mb-3">
+            <div class="progress-bar bg-success" style="width: {{ confidence }}%">
+                {{ confidence }}%
+            </div>
+        </div>
+
+        <!-- SCORES -->
+        <div class="row mt-3">
+
+            <div class="col-md-6 text-center">
+                <h5>Resume Score</h5>
+                <div class="score-value">{{ score }}/100</div>
+            </div>
+
+            <div class="col-md-6 text-center">
+                <h5>ATS Score</h5>
+                <div class="score-value text-warning">
+                    {{ ats_score }}%
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ✅ ATS BREAKDOWN (NEW ADDITION) -->
+        {% if skill_breakdown %}
+        <h4 class="section-title">ATS Skill Breakdown</h4>
+
+        {% for skill, score in skill_breakdown.items() %}
+
+        <div class="mb-2">
+
+            <div class="d-flex justify-content-between">
+                <span>{{ skill }}</span>
+                <span>{{ score }}%</span>
+            </div>
+
+            <div class="progress">
+                <div class="progress-bar bg-info" style="width: {{ score }}%">
+                </div>
+            </div>
+
+        </div>
+
+        {% endfor %}
+        {% endif %}
+
+        <!-- SKILLS -->
+        <h4 class="section-title">Extracted Skills</h4>
+
+        {% for s in skills %}
+        <span class="badge bg-info text-dark">{{ s }}</span>
+        {% endfor %}
+
+        <!-- MISSING -->
+        {% if missing_skills %}
+        <h4 class="section-title text-warning">Missing Skills</h4>
+
+        {% for m in missing_skills %}
+        <span class="badge bg-danger">{{ m }}</span>
+        {% endfor %}
+        {% endif %}
+
+        <!-- TOP 3 -->
+        <h4 class="section-title">Top Predictions</h4>
+
+        <ul class="list-group">
+            {% for role, score in top_3 %}
+            <li class="list-group-item d-flex justify-content-between">
+                {{ role }}
+                <span class="badge bg-primary">{{ score }}%</span>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <!-- SUGGESTIONS -->
+        <h4 class="section-title">AI Suggestions</h4>
+
+        {% for s in suggestions %}
+        <div class="suggestion-item">
+            {{ s }}
+        </div>
+        {% endfor %}
+
+        <!-- AI FEEDBACK -->
+        <h4 class="section-title">AI Feedback</h4>
+
+        {% for f in ai_feedback %}
+        <div class="suggestion-item">
+            <i class="bi bi-check-circle-fill text-info"></i>
+            {{ f }}
+        </div>
+        {% endfor %}
+
+        <!-- JOBS -->
+        {% if recommended_jobs %}
+        <h4 class="section-title text-warning">Recommended Jobs</h4>
+
+        {% for job in recommended_jobs %}
+        <div class="suggestion-item">
+            {{ job }}
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        <!-- CHART -->
+        {% if chart %}
+        <div class="text-center mt-4">
+            <h4>Prediction Chart</h4>
+            <img src="{{ chart }}" width="400">
+        </div>
+        {% endif %}
+
+        <!-- BUTTONS -->
+        <div class="mt-4">
+
+            <a href="/download" class="btn btn-primary w-100 mb-2">
+                Download Report
+            </a>
+
+            <a href="/history" class="btn btn-dark w-100 mb-2">
+                View History
+            </a>
+
+            <a href="/admin" class="btn btn-warning w-100">
+                Admin Dashboard
+            </a>
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
+</div>
+
+</body>
+</html>

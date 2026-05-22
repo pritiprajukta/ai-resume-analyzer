@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+    <title>Admin Dashboard</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+        rel="stylesheet">
+
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+    <style>
+
+        body{
+
+            background:#0f172a;
+
+            color:white;
+
+            font-family:Poppins,sans-serif;
+
+            padding:30px;
+        }
+
+        .card-box{
+
+            background:#1e293b;
+
+            border-radius:20px;
+
+            padding:25px;
+
+            text-align:center;
+
+            margin-bottom:25px;
+
+            box-shadow:0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .card-box h2{
+
+            font-size:40px;
+
+            font-weight:bold;
+        }
+
+        .table{
+
+            background:#1e293b;
+
+            color:white;
+
+            border-radius:20px;
+
+            overflow:hidden;
+        }
+
+        .table th{
+
+            background:#334155;
+        }
+
+        .badge-custom{
+
+            background:#22c55e;
+
+            padding:8px 12px;
+
+            border-radius:10px;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+
+            <h1>
+
+                <i class="bi bi-speedometer2"></i>
+                Admin Dashboard
+
+            </h1>
+
+            <a href="/"
+                class="btn btn-light">
+
+                Back Home
+
+            </a>
+
+        </div>
+
+        <!-- TOP CARDS -->
+        <div class="row">
+
+            <div class="col-md-6">
+
+                <div class="card-box">
+
+                    <h5>Total Users</h5>
+
+                    <h2>{{ total_users }}</h2>
+
+                </div>
+
+            </div>
+
+            <div class="col-md-6">
+
+                <div class="card-box">
+
+                    <h5>Total Predictions</h5>
+
+                    <h2>{{ total_predictions }}</h2>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- STATS -->
+        <div class="card-box">
+
+            <h3 class="mb-4">
+
+                Prediction Statistics
+
+            </h3>
+
+            {% for item in stats %}
+
+                <div class="mb-3">
+
+                    <span class="badge-custom">
+
+                        {{ item[0] }}
+
+                    </span>
+
+                    -
+
+                    {{ item[1] }} resumes
+
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+        <!-- HISTORY TABLE -->
+        <div class="mt-5">
+
+            <h3 class="mb-4">
+
+                Resume History
+
+            </h3>
+
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-hover">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>ID</th>
+
+                            <th>User</th>
+
+                            <th>Prediction</th>
+
+                            <th>Confidence</th>
+
+                            <th>Skills</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        {% for row in data %}
+
+                        <tr>
+
+                            <td>{{ row[0] }}</td>
+
+                            <td>{{ row[1] }}</td>
+
+                            <td>{{ row[2] }}</td>
+
+                            <td>{{ row[3] }}%</td>
+
+                            <td>{{ row[4] }}</td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>

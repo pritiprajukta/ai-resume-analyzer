@@ -11,12 +11,17 @@ from reportlab.pdfgen import canvas
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+# -------------------------
+# SAFE BASE PATH (IMPORTANT FOR RENDER)
+# -------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# -------------------------
+# IMPORT CUSTOM MODULES (SAFE)
+# -------------------------
 from database import save_history
 from auth import login_user, register_user
 
-# -------------------------
-# OPTIONAL AI MODULE
-# -------------------------
 try:
     from ai_helper import get_ai_feedback
 except:
@@ -42,12 +47,8 @@ app = Flask(__name__)
 app.secret_key = "secret123"
 
 # -------------------------
-# MODEL LOAD
+# MODEL LOAD (SAFE PATH)
 # -------------------------
-import os
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
 model = pickle.load(open(os.path.join(BASE_DIR, "model", "model.pkl"), "rb"))
 vectorizer = pickle.load(open(os.path.join(BASE_DIR, "model", "vectorizer.pkl"), "rb"))
 
@@ -95,9 +96,6 @@ def calculate_resume_score(skills):
     return min(40 + len(skills) * 8, 100)
 
 
-# -------------------------
-# ATS (INDUSTRY LEVEL)
-# -------------------------
 def calculate_ats_score(resume_text, job_description, skills):
 
     if not resume_text or not job_description:
@@ -109,16 +107,10 @@ def calculate_ats_score(resume_text, job_description, skills):
 
     base_score = similarity * 100
 
-    skill_score = 0
-    for s in skills:
-        skill_score += IMPORTANT_SKILLS.get(s.lower(), 2)
-
+    skill_score = sum(IMPORTANT_SKILLS.get(s.lower(), 2) for s in skills)
     skill_score = min(skill_score, 40)
 
-    penalty = 0
-    for must in MUST_HAVE_SKILLS:
-        if must not in skills:
-            penalty += 10
+    penalty = sum(10 for must in MUST_HAVE_SKILLS if must not in skills)
 
     final_score = base_score + skill_score - penalty
 
@@ -147,7 +139,7 @@ def create_pie_chart(classes, probabilities):
     plt.pie(probabilities, labels=classes, autopct='%1.1f%%')
     plt.title("Prediction Distribution")
 
-    path = "static/pie_chart.png"
+    path = os.path.join("static", "pie_chart.png")
     plt.savefig(path, bbox_inches="tight")
     plt.close()
 
@@ -216,12 +208,9 @@ def predict():
 
     try:
         reader = PyPDF2.PdfReader(file)
-        text = ""
-        for page in reader.pages:
-            if page.extract_text():
-                text += page.extract_text()
-    except:
-        return "PDF error"
+        text = "".join([page.extract_text() or "" for page in reader.pages])
+    except Exception as e:
+        return f"PDF error: {e}"
 
     vec = vectorizer.transform([text])
     prediction = model.predict(vec)[0]
@@ -231,7 +220,6 @@ def predict():
 
     classes = model.classes_
     top_indices = np.argsort(probabilities)[::-1][:3]
-
     top_3 = [(classes[i], round(probabilities[i] * 100, 2)) for i in top_indices]
 
     skills = extract_skills(text)
@@ -257,8 +245,8 @@ def predict():
 
     try:
         save_history(username, prediction, confidence, skills)
-    except:
-        pass
+    except Exception as e:
+        print("DB error:", e)
 
     last_prediction = {
         "prediction": prediction,
@@ -293,7 +281,7 @@ def download():
     if "user" not in session:
         return redirect("/login")
 
-    file = "report.pdf"
+    file = os.path.join(BASE_DIR, "report.pdf")
     c = canvas.Canvas(file)
 
     c.drawString(100, 800, "AI Resume Report")
@@ -314,7 +302,7 @@ def history():
     if "user" not in session:
         return redirect("/login")
 
-    conn = sqlite3.connect("users.db")
+    conn = sqlite3.connect(os.path.join(BASE_DIR, "users.db"))
     c = conn.cursor()
     c.execute("SELECT * FROM history ORDER BY id DESC")
     data = c.fetchall()
@@ -331,7 +319,7 @@ def admin():
     if "user" not in session:
         return redirect("/login")
 
-    conn = sqlite3.connect("users.db")
+    conn = sqlite3.connect(os.path.join(BASE_DIR, "users.db"))
     c = conn.cursor()
 
     c.execute("SELECT COUNT(*) FROM users")
@@ -354,7 +342,7 @@ def admin():
 
 
 # -------------------------
-# RUN
+# RUN (LOCAL ONLY)
 # -------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
